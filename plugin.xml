@@ -1,0 +1,21 @@
+<plugin
+	id="ru.spb.nicetu.vpplugin.TestPlugin"
+	name="Generate Flow of Events Report"
+	description="Generate an HTML report of use case flow of events."
+	provider="Visual Paradigm"
+	class="ru.spb.nicetu.vpplugin.VpPlugin">
+        
+	<actionSets>
+		<actionSet id="ru.spb.nicetu.vpplugin.actionset">
+			<action 
+				id="ru.spb.nicetu.vpplugin.CreateSchemeAction"
+				actionType="generalAction"
+				label="Test Generate"
+				tooltip="Подсказака действия"
+				style="normal"
+				menuPath="Tools\Code">
+				<actionController class="ru.spb.nicetu.vpplugin.CreateSchemeAction"/>
+			</action>
+		</actionSet>
+	</actionSets>
+</plugin>
