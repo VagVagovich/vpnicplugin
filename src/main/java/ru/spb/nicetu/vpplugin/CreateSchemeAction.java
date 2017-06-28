@@ -34,6 +34,10 @@ import com.vp.plugin.model.IDBTable;
 import com.vp.plugin.model.IModelElement;
 import com.vp.plugin.model.factory.IModelElementFactory;
 
+/**
+ * @author vag
+ *
+ */
 public class CreateSchemeAction implements VPActionController{
 
     @Override
@@ -69,7 +73,7 @@ public class CreateSchemeAction implements VPActionController{
             if(diagram instanceof IERDiagramUIModel) {
                 viewManager.showMessageDialog(parentFrame, "У нас ER диаграмма");
                 
-                generateXmlFormEr((IERDiagramUIModel) diagram, fileChooser.getSelectedFile());
+                result = generateXsdAndXmlFormEr((IERDiagramUIModel) diagram, fileChooser.getSelectedFile());
                 
             } else if(diagram instanceof IClassDiagramUIModel) {
                 viewManager.showMessageDialog(parentFrame, "У нас диаграмма классов");
@@ -79,6 +83,11 @@ public class CreateSchemeAction implements VPActionController{
             }
 
             // show the generation result
+            if (result.isEmpty()) {
+                result = "Формирование файлов завершен корректно";
+            } else {
+                result = "Некорректное завершение. Имеются следующие ошибки: /n" + result;
+            }
             viewManager.showMessageDialog(parentFrame, result);
         }
     }
@@ -89,6 +98,11 @@ public class CreateSchemeAction implements VPActionController{
         
     }
     
+/**
+ * @param diagram
+ * @param savedFile
+ * @return
+ */
 //    private List<IDBTable> getTables(IERDiagramUIModel diagram) {
 //        ViewManager viewManager = ApplicationManager.instance().getViewManager();
 //        Component parentFrame = viewManager.getRootFrame();
@@ -109,7 +123,14 @@ public class CreateSchemeAction implements VPActionController{
 //        return ret;
 //    }
     
-    public void generateXmlFormEr(IERDiagramUIModel diagram, File savedFile) {
+    /**
+     * 
+     * @param diagram
+     * @param savedFile
+     * @return
+     */
+    public String generateXsdAndXmlFormEr(IERDiagramUIModel diagram, File savedFile) {
+        String result = "";
         
         ViewManager viewManager = ApplicationManager.instance().getViewManager();
         Component parentFrame = viewManager.getRootFrame();
@@ -126,73 +147,118 @@ public class CreateSchemeAction implements VPActionController{
           }
         
         try {
+            viewManager.showMessageDialog(parentFrame, "Создаем файлы");
             DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
             DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
+            Document xml = docBuilder.newDocument();
+            
+//            DocumentBuilderFactory docXsdFactory = DocumentBuilderFactory.newInstance();
+//            DocumentBuilder docXsdBuilder = docXsdFactory.newDocumentBuilder();
+            Document xsd = docBuilder.newDocument();
+            
+            viewManager.showMessageDialog(parentFrame, "Создаем первые элементы");
         
-            Document doc = docBuilder.newDocument();
-        
-            Element rootElement = doc.createElement("model");
-            doc.appendChild(rootElement);
+            Element rootXmlElement = xml.createElement("model");
+            xml.appendChild(rootXmlElement);
+            
+            Element rootXsdElement = xsd.createElement("xsd:schema");
+            xsd.appendChild(rootXsdElement);
+            
+            Attr schemaAttr1 = xsd.createAttribute("xmlns:xsd");
+            schemaAttr1.setValue("http://www.w3.org/2001/XMLSchema");
+            rootXsdElement.setAttributeNode(schemaAttr1);
+            
+            Attr schemaAttr2 = xsd.createAttribute("targetNamespace");
+            schemaAttr2.setValue("http://nicetu.spb.ru/space/types/1.0");
+            rootXsdElement.setAttributeNode(schemaAttr2);
+            
+            Attr schemaAttr3 = xsd.createAttribute("xmlns");
+            schemaAttr3.setValue("http://nicetu.spb.ru/space/types/1.0");
+            rootXsdElement.setAttributeNode(schemaAttr3);
+            
+            Attr schemaAttr4 = xsd.createAttribute("xmlns:common-types");
+            schemaAttr4.setValue("http://nicetu.spb.ru/common/types/1.0");
+            rootXsdElement.setAttributeNode(schemaAttr4);
+            
+            Attr schemaAttr5 = xsd.createAttribute("elementFormDefault");
+            schemaAttr5.setValue("qualified");
+            rootXsdElement.setAttributeNode(schemaAttr5);
+            
+            viewManager.showMessageDialog(parentFrame, "Создаем остальные элементы");
             
             for(IDBTable classElement : tables) {
-                                
-                Element staff = doc.createElement("object");
-                rootElement.appendChild(staff);
-            
-                Attr attr = doc.createAttribute("class");
-                attr.setValue(classElement.getName());
-                staff.setAttributeNode(attr);
                 
-//                viewManager.showMessageDialog(parentFrame, "Класс: " + classElement.getName());
-                
-//                for(IDBColumn column : classElement.toDBColumnArray()) {
-//                    viewManager.showMessageDialog(parentFrame, "Параметр: " + column.getName() + "тип " + column.getType() + " "  + column.getTypeInText());
-//                }
-                
-//                for(IChartRelationship relationship : classElement.toFromChartRelationshipArray()) {
-//                    viewManager.showMessageDialog(parentFrame, "Просто связь у класса: " + classElement.getName());
-//                }
-                
-                for(IDBForeignKey relationship : relationships) {
+//                if(classElement.getName().contains(" ")) {
+//                    //error
+//                } else {
+                    Element xmlElement = xml.createElement("object");
+                    rootXmlElement.appendChild(xmlElement);
                     
-                    if (relationship.getFrom().equals(classElement)) {
-                    viewManager.showMessageDialog(parentFrame, "Связь у класса: " + classElement.getName());
+                    Attr attr = xml.createAttribute("class");
+                    attr.setValue(classElement.getName());
+                    xmlElement.setAttributeNode(attr);
                     
-                    Element property = doc.createElement("property");
-                    staff.appendChild(property);
+                    Element xsdElement = xsd.createElement("xsd:complexType");
+                    rootXsdElement.appendChild(xsdElement);
                     
-//                    relationship.getOppositeEnd().getModelElement().getName();
-                
-//                    viewManager.showMessageDialog(parentFrame, relationship.getTo());
-                    if (relationship.getTo() != null) {
-                        Attr attr1 = doc.createAttribute("class");
-                        attr1.setValue(relationship.getTo().getName());
-                        property.setAttributeNode(attr1);
+                    Attr asdAttr = xsd.createAttribute("name");
+                    asdAttr.setValue(classElement.getName());
+                    xsdElement.setAttributeNode(asdAttr);
+                    
+//                    viewManager.showMessageDialog(parentFrame, "Класс: " + classElement.getName());
+                    
+                    for(IDBForeignKey relationship : relationships) {
+                        
+                        if (relationship.getFrom().equals(classElement)) {
+//                        viewManager.showMessageDialog(parentFrame, "Связь у класса: " + classElement.getName());
+                        
+                        Element property = xml.createElement("property");
+                        xmlElement.appendChild(property);
+                        
+//                        relationship.getOppositeEnd().getModelElement().getName();
+                    
+//                        viewManager.showMessageDialog(parentFrame, relationship.getTo());
+                        if (relationship.getTo() != null) {
+                            Attr attr1 = xml.createAttribute("class");
+                            attr1.setValue(relationship.getTo().getName());
+                            property.setAttributeNode(attr1);
+                        }
+                    
+                        Attr attr2 = xml.createAttribute("comment");
+                        attr2.setValue("");
+                        property.setAttributeNode(attr2);
+                    
+//                        viewManager.showMessageDialog(parentFrame, relationship.getName());
+                        Attr attr3 = xml.createAttribute("name");
+                        attr3.setValue(relationship.getName());
+                        property.setAttributeNode(attr3);
+                    
+                        Attr attr4 = xml.createAttribute("type");
+                        attr4.setValue("");
+                        property.setAttributeNode(attr4);
+                        }
                     }
-                
-                    Attr attr2 = doc.createAttribute("comment");
-                    attr2.setValue("");
-                    property.setAttributeNode(attr2);
-                
-//                    viewManager.showMessageDialog(parentFrame, relationship.getName());
-                    Attr attr3 = doc.createAttribute("name");
-                    attr3.setValue(relationship.getName());
-                    property.setAttributeNode(attr3);
-                
-                    Attr attr4 = doc.createAttribute("type");
-                    attr4.setValue("");
-                    property.setAttributeNode(attr4);
-                    }
-                }
+//                }
             }
-        
+            
+            viewManager.showMessageDialog(parentFrame, "Всё создали. Начинаем сохранять");
             
             TransformerFactory transformerFactory = TransformerFactory.newInstance();
             Transformer transformer = transformerFactory.newTransformer();
-            DOMSource source = new DOMSource(doc);
-            StreamResult streamResult = new StreamResult(savedFile);
+            
+            viewManager.showMessageDialog(parentFrame, "Сохраняем xsd");
+            
+            DOMSource sourceXsd = new DOMSource(xsd);
+            StreamResult streamXsdResult = new StreamResult(savedFile);
         
-            transformer.transform(source, streamResult);
+            transformer.transform(sourceXsd, streamXsdResult);
+            
+            viewManager.showMessageDialog(parentFrame, "Сохраняем xml");
+            
+            DOMSource sourceXml = new DOMSource(xml);
+            StreamResult streamXmlResult = new StreamResult(new File(savedFile.getParentFile(),savedFile.getName()+".xml"));
+        
+            transformer.transform(sourceXml, streamXmlResult);
         
         } catch (ParserConfigurationException pce) {
             pce.printStackTrace();
@@ -200,6 +266,7 @@ public class CreateSchemeAction implements VPActionController{
             tfe.printStackTrace();
         }
         
+        return result;
     }
 
 }
