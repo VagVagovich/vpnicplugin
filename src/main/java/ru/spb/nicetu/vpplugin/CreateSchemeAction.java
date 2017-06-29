@@ -29,6 +29,7 @@ import com.vp.plugin.diagram.IClassDiagramUIModel;
 import com.vp.plugin.diagram.IDiagramElement;
 import com.vp.plugin.diagram.IDiagramUIModel;
 import com.vp.plugin.diagram.IERDiagramUIModel;
+import com.vp.plugin.model.IDBColumn;
 import com.vp.plugin.model.IDBForeignKey;
 import com.vp.plugin.model.IDBTable;
 import com.vp.plugin.model.IModelElement;
@@ -98,31 +99,6 @@ public class CreateSchemeAction implements VPActionController{
         
     }
     
-/**
- * @param diagram
- * @param savedFile
- * @return
- */
-//    private List<IDBTable> getTables(IERDiagramUIModel diagram) {
-//        ViewManager viewManager = ApplicationManager.instance().getViewManager();
-//        Component parentFrame = viewManager.getRootFrame();
-//        
-//        List<IDBTable> ret = new ArrayList<IDBTable>();
-//        for(IDiagramElement shape : diagram.toDiagramElementArray()) {
-////        for(IShapeUIModel shape : diagram.toShapeUIModelArray()) {
-//            IModelElement element = shape.getModelElement();
-//            if (element!= null) {
-//                viewManager.showMessageDialog(parentFrame, "Есть элемент типа" + element.getModelType() + " с именем " + element.getName());
-//            }
-//            if(element != null && element.getModelType().equals(IModelElementFactory.MODEL_TYPE_DB_TABLE)) {
-//                ret.add((IDBTable)element);
-//            } else if(element != null && element.getModelType().equals(IModelElementFactory.MODEL_TYPE_DB_FOREIGN_KEY)) {
-//                ret.add((IDBTable)element);
-//            }
-//        }
-//        return ret;
-//    }
-    
     /**
      * 
      * @param diagram
@@ -152,8 +128,6 @@ public class CreateSchemeAction implements VPActionController{
             DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
             Document xml = docBuilder.newDocument();
             
-//            DocumentBuilderFactory docXsdFactory = DocumentBuilderFactory.newInstance();
-//            DocumentBuilder docXsdBuilder = docXsdFactory.newDocumentBuilder();
             Document xsd = docBuilder.newDocument();
             
             viewManager.showMessageDialog(parentFrame, "Создаем первые элементы");
@@ -184,6 +158,26 @@ public class CreateSchemeAction implements VPActionController{
             schemaAttr5.setValue("qualified");
             rootXsdElement.setAttributeNode(schemaAttr5);
             
+
+            Element xsdImportElement = xsd.createElement("xsd:import");
+            rootXsdElement.appendChild(xsdImportElement);
+            
+            Attr impAttr1 = xsd.createAttribute("namespace");
+            impAttr1.setValue("http://nicetu.spb.ru/common/types/1.0");
+            xsdImportElement.setAttributeNode(impAttr1);
+            
+            Attr impAttr2 = xsd.createAttribute("schemaLocation");
+            impAttr2.setValue("common.xsd");
+            xsdImportElement.setAttributeNode(impAttr2);
+            
+
+            Element xsdIncludeElement = xsd.createElement("xsd:include");
+            rootXsdElement.appendChild(xsdIncludeElement);
+            
+            Attr inclAttr = xsd.createAttribute("schemaLocation");
+            inclAttr.setValue("primitives.xsd");
+            xsdIncludeElement.setAttributeNode(inclAttr);
+            
             viewManager.showMessageDialog(parentFrame, "Создаем остальные элементы");
             
             for(IDBTable classElement : tables) {
@@ -201,9 +195,30 @@ public class CreateSchemeAction implements VPActionController{
                     Element xsdElement = xsd.createElement("xsd:complexType");
                     rootXsdElement.appendChild(xsdElement);
                     
-                    Attr asdAttr = xsd.createAttribute("name");
-                    asdAttr.setValue(classElement.getName());
-                    xsdElement.setAttributeNode(asdAttr);
+                    Attr xsdAttr = xsd.createAttribute("name");
+                    xsdAttr.setValue(classElement.getName());
+                    xsdElement.setAttributeNode(xsdAttr);
+                    
+                    Element xsdComplexContentElement = xsd.createElement("xsd:complexContent");
+                    xsdElement.appendChild(xsdComplexContentElement);
+                    
+                    Element xsdExtElement = xsd.createElement("xsd:extension");
+                    xsdComplexContentElement.appendChild(xsdExtElement);
+                    
+                    Attr xsdExtAttr = xsd.createAttribute("base");
+                    //TODO здесь могут быть другие типы
+                    xsdExtAttr.setValue("common-types:uniqueObjectType");
+                    xsdExtElement.setAttributeNode(xsdExtAttr);
+                    
+                    for(IDBColumn param : classElement.toDBColumnArray()) {
+                        
+                        Element xsdAttributeElement = xsd.createElement("xsd:attribute");
+                        xsdExtElement.appendChild(xsdAttributeElement);
+                        
+                        Attr xsdAtrAttr = xsd.createAttribute("name");
+                        xsdAtrAttr.setValue(param.getName());
+                        xsdAttributeElement.setAttributeNode(xsdAtrAttr);
+                    }
                     
 //                    viewManager.showMessageDialog(parentFrame, "Класс: " + classElement.getName());
                     
