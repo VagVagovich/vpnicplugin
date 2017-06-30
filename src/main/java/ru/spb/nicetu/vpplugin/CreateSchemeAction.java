@@ -29,6 +29,9 @@ import com.vp.plugin.diagram.IClassDiagramUIModel;
 import com.vp.plugin.diagram.IDiagramElement;
 import com.vp.plugin.diagram.IDiagramUIModel;
 import com.vp.plugin.diagram.IERDiagramUIModel;
+import com.vp.plugin.model.IAssociation;
+import com.vp.plugin.model.IAttribute;
+import com.vp.plugin.model.IClass;
 import com.vp.plugin.model.IDBColumn;
 import com.vp.plugin.model.IDBForeignKey;
 import com.vp.plugin.model.IDBTable;
@@ -73,21 +76,20 @@ public class CreateSchemeAction implements VPActionController{
             
             if(diagram instanceof IERDiagramUIModel) {
                 viewManager.showMessageDialog(parentFrame, "У нас ER диаграмма");
-                
                 result = generateXsdAndXmlFormEr((IERDiagramUIModel) diagram, fileChooser.getSelectedFile());
-                
             } else if(diagram instanceof IClassDiagramUIModel) {
                 viewManager.showMessageDialog(parentFrame, "У нас диаграмма классов");
+                result = generateXsdAndXmlFormClassDiagram((IClassDiagramUIModel) diagram, fileChooser.getSelectedFile());
             } else {
                 viewManager.showMessageDialog(parentFrame, "Неизвестная диаграмма");
-                viewManager.showMessageDialog(parentFrame, diagram.getType());
+                result = "Неверная диаграмма типа " + diagram.getType();
             }
 
             // show the generation result
             if (result.isEmpty()) {
                 result = "Формирование файлов завершен корректно";
             } else {
-                result = "Некорректное завершение. Имеются следующие ошибки: /n" + result;
+                result = "Некорректное завершение. Имеются следующие ошибки: " + result;
             }
             viewManager.showMessageDialog(parentFrame, result);
         }
@@ -105,22 +107,22 @@ public class CreateSchemeAction implements VPActionController{
      * @param savedFile
      * @return
      */
-    public String generateXsdAndXmlFormEr(IERDiagramUIModel diagram, File savedFile) {
+    public String generateXsdAndXmlFormClassDiagram(IClassDiagramUIModel diagram, File savedFile) {
         String result = "";
         
         ViewManager viewManager = ApplicationManager.instance().getViewManager();
         Component parentFrame = viewManager.getRootFrame();
-        List<IDBTable> tables = new ArrayList<IDBTable>();
-        List<IDBForeignKey> relationships = new ArrayList<IDBForeignKey>();
+        List<IClass> tables = new ArrayList<IClass>();
+        List<IAssociation> relationships = new ArrayList<IAssociation>();
         
         for(IDiagramElement shape : diagram.toDiagramElementArray()) {
-              IModelElement element = shape.getModelElement();
-              if(element != null && element.getModelType().equals(IModelElementFactory.MODEL_TYPE_DB_TABLE)) {
-                  tables.add((IDBTable)element);
-              } else if(element != null && element.getModelType().equals(IModelElementFactory.MODEL_TYPE_DB_FOREIGN_KEY)) {
-                  relationships.add((IDBForeignKey)element);
-              }
-          }
+            IModelElement element = shape.getModelElement();
+            if(element != null && element.getModelType().equals(IModelElementFactory.MODEL_TYPE_CLASS)) {
+                tables.add((IClass)element);
+            } else if(element != null && element.getModelType().equals(IModelElementFactory.MODEL_TYPE_ASSOCIATION)) {
+                relationships.add((IAssociation)element);
+            }
+        }
         
         try {
             viewManager.showMessageDialog(parentFrame, "Создаем файлы");
@@ -135,48 +137,156 @@ public class CreateSchemeAction implements VPActionController{
             Element rootXmlElement = xml.createElement("model");
             xml.appendChild(rootXmlElement);
             
-            Element rootXsdElement = xsd.createElement("xsd:schema");
-            xsd.appendChild(rootXsdElement);
+            Element rootXsdElement = createRootXsdEleent(xsd);
             
-            Attr schemaAttr1 = xsd.createAttribute("xmlns:xsd");
-            schemaAttr1.setValue("http://www.w3.org/2001/XMLSchema");
-            rootXsdElement.setAttributeNode(schemaAttr1);
+            viewManager.showMessageDialog(parentFrame, "Создаем остальные элементы");
             
-            Attr schemaAttr2 = xsd.createAttribute("targetNamespace");
-            schemaAttr2.setValue("http://nicetu.spb.ru/space/types/1.0");
-            rootXsdElement.setAttributeNode(schemaAttr2);
+            for(IClass classElement : tables) {
+                
+//                if(classElement.getName().contains(" ")) {
+//                    //error
+//                } else {
+                    Element xmlElement = xml.createElement("object");
+                    rootXmlElement.appendChild(xmlElement);
+                    
+                    Attr attr = xml.createAttribute("class");
+                    attr.setValue(classElement.getName());
+                    xmlElement.setAttributeNode(attr);
+                    
+                    createXsdClassClass(xsd, rootXsdElement, classElement);
+                    
+                    for(IAssociation relationship : relationships) {
+                        
+                        if (relationship.getFrom().equals(classElement)) {
+                        
+                            Element property = xml.createElement("property");
+                            xmlElement.appendChild(property);
+                        
+                            if (relationship.getTo() != null) {
+                                Attr attr1 = xml.createAttribute("class");
+                                attr1.setValue(relationship.getTo().getName());
+                                property.setAttributeNode(attr1);
+                            }
+                            
+                            Attr attr2 = xml.createAttribute("comment");
+                            attr2.setValue("");
+                            property.setAttributeNode(attr2);
+                    
+                            Attr attr3 = xml.createAttribute("name");
+                            attr3.setValue(relationship.getName());
+                            property.setAttributeNode(attr3);
+                            
+                            Attr attr4 = xml.createAttribute("type");
+                            attr4.setValue("");
+                            property.setAttributeNode(attr4);
+                        }
+                    }
+//                }
+            }
             
-            Attr schemaAttr3 = xsd.createAttribute("xmlns");
-            schemaAttr3.setValue("http://nicetu.spb.ru/space/types/1.0");
-            rootXsdElement.setAttributeNode(schemaAttr3);
+            viewManager.showMessageDialog(parentFrame, "Всё создали. Начинаем сохранять");
             
-            Attr schemaAttr4 = xsd.createAttribute("xmlns:common-types");
-            schemaAttr4.setValue("http://nicetu.spb.ru/common/types/1.0");
-            rootXsdElement.setAttributeNode(schemaAttr4);
+            TransformerFactory transformerFactory = TransformerFactory.newInstance();
+            Transformer transformer = transformerFactory.newTransformer();
             
-            Attr schemaAttr5 = xsd.createAttribute("elementFormDefault");
-            schemaAttr5.setValue("qualified");
-            rootXsdElement.setAttributeNode(schemaAttr5);
+            DOMSource sourceXsd = new DOMSource(xsd);
+            StreamResult streamXsdResult = new StreamResult(savedFile);
+        
+            transformer.transform(sourceXsd, streamXsdResult);
             
-
-            Element xsdImportElement = xsd.createElement("xsd:import");
-            rootXsdElement.appendChild(xsdImportElement);
+            DOMSource sourceXml = new DOMSource(xml);
+            StreamResult streamXmlResult = new StreamResult(new File(savedFile.getParentFile(),savedFile.getName()+".xml"));
+        
+            transformer.transform(sourceXml, streamXmlResult);
+        
+        } catch (ParserConfigurationException pce) {
+            pce.printStackTrace();
+        } catch (TransformerException tfe) {
+            tfe.printStackTrace();
+        }
+        
+        return result;
+    }
+    
+    private void createXsdClassClass(Document xsd, Element rootElement, IClass classElement){
+        Element xsdElement = xsd.createElement("xsd:complexType");
+        rootElement.appendChild(xsdElement);
+        
+        Attr xsdAttr = xsd.createAttribute("name");
+        xsdAttr.setValue(classElement.getName());
+        xsdElement.setAttributeNode(xsdAttr);
+        
+        Element xsdComplexContentElement = xsd.createElement("xsd:complexContent");
+        xsdElement.appendChild(xsdComplexContentElement);
+        
+        Element xsdExtElement = xsd.createElement("xsd:extension");
+        xsdComplexContentElement.appendChild(xsdExtElement);
+        
+        Attr xsdExtAttr = xsd.createAttribute("base");
+        //TODO здесь могут быть другие типы
+        xsdExtAttr.setValue("common-types:uniqueObjectType");
+        xsdExtElement.setAttributeNode(xsdExtAttr);
+        
+        for(IAttribute param : classElement.toAttributeArray()) {
+            createClassParam(xsd, xsdExtElement, param);
+        }
+    }
+    
+    private void createClassParam(Document xsd, Element xsdElement, IAttribute param){
+        Element xsdAttributeElement = xsd.createElement("xsd:attribute");
+        xsdElement.appendChild(xsdAttributeElement);
+        
+        Attr xsdAtrAttr = xsd.createAttribute("name");
+        xsdAtrAttr.setValue(param.getName());
+        xsdAttributeElement.setAttributeNode(xsdAtrAttr);
+        
+        Attr xsdAtrTypeAttr = xsd.createAttribute("type");
+        xsdAtrTypeAttr.setValue("xsd:" + param.getTypeAsText());
+        xsdAttributeElement.setAttributeNode(xsdAtrTypeAttr);
+        
+        Attr xsdUseAttr = xsd.createAttribute("use");
+        //TODO а откуда брать обязательность полей?
+        xsdUseAttr.setValue("required");
+        xsdAttributeElement.setAttributeNode(xsdUseAttr);
+    }
+    
+    /**
+     * 
+     * @param diagram
+     * @param savedFile
+     * @return
+     */
+    public String generateXsdAndXmlFormEr(IERDiagramUIModel diagram, File savedFile) {
+        String result = "";
+        
+        ViewManager viewManager = ApplicationManager.instance().getViewManager();
+        Component parentFrame = viewManager.getRootFrame();
+        List<IDBTable> tables = new ArrayList<IDBTable>();
+        List<IDBForeignKey> relationships = new ArrayList<IDBForeignKey>();
+        
+        for(IDiagramElement shape : diagram.toDiagramElementArray()) {
+            IModelElement element = shape.getModelElement();
+            if(element != null && element.getModelType().equals(IModelElementFactory.MODEL_TYPE_DB_TABLE)) {
+                tables.add((IDBTable)element);
+            } else if(element != null && element.getModelType().equals(IModelElementFactory.MODEL_TYPE_DB_FOREIGN_KEY)) {
+                relationships.add((IDBForeignKey)element);
+            }
+        }
+        
+        try {
+            viewManager.showMessageDialog(parentFrame, "Создаем файлы");
+            DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
+            Document xml = docBuilder.newDocument();
             
-            Attr impAttr1 = xsd.createAttribute("namespace");
-            impAttr1.setValue("http://nicetu.spb.ru/common/types/1.0");
-            xsdImportElement.setAttributeNode(impAttr1);
+            Document xsd = docBuilder.newDocument();
             
-            Attr impAttr2 = xsd.createAttribute("schemaLocation");
-            impAttr2.setValue("common.xsd");
-            xsdImportElement.setAttributeNode(impAttr2);
+            viewManager.showMessageDialog(parentFrame, "Создаем первые элементы");
+        
+            Element rootXmlElement = xml.createElement("model");
+            xml.appendChild(rootXmlElement);
             
-
-            Element xsdIncludeElement = xsd.createElement("xsd:include");
-            rootXsdElement.appendChild(xsdIncludeElement);
-            
-            Attr inclAttr = xsd.createAttribute("schemaLocation");
-            inclAttr.setValue("primitives.xsd");
-            xsdIncludeElement.setAttributeNode(inclAttr);
+            Element rootXsdElement = createRootXsdEleent(xsd);
             
             viewManager.showMessageDialog(parentFrame, "Создаем остальные элементы");
             
@@ -192,65 +302,32 @@ public class CreateSchemeAction implements VPActionController{
                     attr.setValue(classElement.getName());
                     xmlElement.setAttributeNode(attr);
                     
-                    Element xsdElement = xsd.createElement("xsd:complexType");
-                    rootXsdElement.appendChild(xsdElement);
-                    
-                    Attr xsdAttr = xsd.createAttribute("name");
-                    xsdAttr.setValue(classElement.getName());
-                    xsdElement.setAttributeNode(xsdAttr);
-                    
-                    Element xsdComplexContentElement = xsd.createElement("xsd:complexContent");
-                    xsdElement.appendChild(xsdComplexContentElement);
-                    
-                    Element xsdExtElement = xsd.createElement("xsd:extension");
-                    xsdComplexContentElement.appendChild(xsdExtElement);
-                    
-                    Attr xsdExtAttr = xsd.createAttribute("base");
-                    //TODO здесь могут быть другие типы
-                    xsdExtAttr.setValue("common-types:uniqueObjectType");
-                    xsdExtElement.setAttributeNode(xsdExtAttr);
-                    
-                    for(IDBColumn param : classElement.toDBColumnArray()) {
-                        
-                        Element xsdAttributeElement = xsd.createElement("xsd:attribute");
-                        xsdExtElement.appendChild(xsdAttributeElement);
-                        
-                        Attr xsdAtrAttr = xsd.createAttribute("name");
-                        xsdAtrAttr.setValue(param.getName());
-                        xsdAttributeElement.setAttributeNode(xsdAtrAttr);
-                    }
-                    
-//                    viewManager.showMessageDialog(parentFrame, "Класс: " + classElement.getName());
+                    createXsdErClass(xsd, rootXsdElement, classElement);
                     
                     for(IDBForeignKey relationship : relationships) {
                         
                         if (relationship.getFrom().equals(classElement)) {
-//                        viewManager.showMessageDialog(parentFrame, "Связь у класса: " + classElement.getName());
                         
-                        Element property = xml.createElement("property");
-                        xmlElement.appendChild(property);
+                            Element property = xml.createElement("property");
+                            xmlElement.appendChild(property);
                         
-//                        relationship.getOppositeEnd().getModelElement().getName();
+                            if (relationship.getTo() != null) {
+                                Attr attr1 = xml.createAttribute("class");
+                                attr1.setValue(relationship.getTo().getName());
+                                property.setAttributeNode(attr1);
+                            }
+                            
+                            Attr attr2 = xml.createAttribute("comment");
+                            attr2.setValue("");
+                            property.setAttributeNode(attr2);
                     
-//                        viewManager.showMessageDialog(parentFrame, relationship.getTo());
-                        if (relationship.getTo() != null) {
-                            Attr attr1 = xml.createAttribute("class");
-                            attr1.setValue(relationship.getTo().getName());
-                            property.setAttributeNode(attr1);
-                        }
-                    
-                        Attr attr2 = xml.createAttribute("comment");
-                        attr2.setValue("");
-                        property.setAttributeNode(attr2);
-                    
-//                        viewManager.showMessageDialog(parentFrame, relationship.getName());
-                        Attr attr3 = xml.createAttribute("name");
-                        attr3.setValue(relationship.getName());
-                        property.setAttributeNode(attr3);
-                    
-                        Attr attr4 = xml.createAttribute("type");
-                        attr4.setValue("");
-                        property.setAttributeNode(attr4);
+                            Attr attr3 = xml.createAttribute("name");
+                            attr3.setValue(relationship.getName());
+                            property.setAttributeNode(attr3);
+                            
+                            Attr attr4 = xml.createAttribute("type");
+                            attr4.setValue("");
+                            property.setAttributeNode(attr4);
                         }
                     }
 //                }
@@ -261,14 +338,10 @@ public class CreateSchemeAction implements VPActionController{
             TransformerFactory transformerFactory = TransformerFactory.newInstance();
             Transformer transformer = transformerFactory.newTransformer();
             
-            viewManager.showMessageDialog(parentFrame, "Сохраняем xsd");
-            
             DOMSource sourceXsd = new DOMSource(xsd);
             StreamResult streamXsdResult = new StreamResult(savedFile);
         
             transformer.transform(sourceXsd, streamXsdResult);
-            
-            viewManager.showMessageDialog(parentFrame, "Сохраняем xml");
             
             DOMSource sourceXml = new DOMSource(xml);
             StreamResult streamXmlResult = new StreamResult(new File(savedFile.getParentFile(),savedFile.getName()+".xml"));
@@ -282,6 +355,98 @@ public class CreateSchemeAction implements VPActionController{
         }
         
         return result;
+    }
+    
+    private void createXsdErClass(Document xsd, Element rootElement, IDBTable classElement){
+        Element xsdElement = xsd.createElement("xsd:complexType");
+        rootElement.appendChild(xsdElement);
+        
+        Attr xsdAttr = xsd.createAttribute("name");
+        xsdAttr.setValue(classElement.getName());
+        xsdElement.setAttributeNode(xsdAttr);
+        
+        Element xsdComplexContentElement = xsd.createElement("xsd:complexContent");
+        xsdElement.appendChild(xsdComplexContentElement);
+        
+        Element xsdExtElement = xsd.createElement("xsd:extension");
+        xsdComplexContentElement.appendChild(xsdExtElement);
+        
+        Attr xsdExtAttr = xsd.createAttribute("base");
+        //TODO здесь могут быть другие типы
+        xsdExtAttr.setValue("common-types:uniqueObjectType");
+        xsdExtElement.setAttributeNode(xsdExtAttr);
+        
+        for(IDBColumn param : classElement.toDBColumnArray()) {
+            createErParam(xsd, xsdExtElement, param);
+        }
+    }
+    
+    private void createErParam(Document xsd, Element xsdElement, IDBColumn param){
+        Element xsdAttributeElement = xsd.createElement("xsd:attribute");
+        xsdElement.appendChild(xsdAttributeElement);
+        
+        Attr xsdAtrAttr = xsd.createAttribute("name");
+        xsdAtrAttr.setValue(param.getName());
+        xsdAttributeElement.setAttributeNode(xsdAtrAttr);
+        
+        Attr xsdAtrTypeAttr = xsd.createAttribute("type");
+        xsdAtrTypeAttr.setValue("xsd:" + param.getTypeInText());
+        xsdAttributeElement.setAttributeNode(xsdAtrTypeAttr);
+        
+        Attr xsdUseAttr = xsd.createAttribute("use");
+        //TODO а откуда брать обязательность полей?
+        xsdUseAttr.setValue("required");
+        xsdAttributeElement.setAttributeNode(xsdUseAttr);
+    }
+    
+    /**
+     * Создать коневой элемент для xsd файла
+     * @param xsd - Xsd документ
+     * @return коневой элемент для xsd файла
+     */
+    private Element createRootXsdEleent(Document xsd){
+        Element rootXsdElement = xsd.createElement("xsd:schema");
+        xsd.appendChild(rootXsdElement);
+        
+        Attr schemaAttr1 = xsd.createAttribute("xmlns:xsd");
+        schemaAttr1.setValue("http://www.w3.org/2001/XMLSchema");
+        rootXsdElement.setAttributeNode(schemaAttr1);
+        
+        Attr schemaAttr2 = xsd.createAttribute("targetNamespace");
+        schemaAttr2.setValue("http://nicetu.spb.ru/space/types/1.0");
+        rootXsdElement.setAttributeNode(schemaAttr2);
+        
+        Attr schemaAttr3 = xsd.createAttribute("xmlns");
+        schemaAttr3.setValue("http://nicetu.spb.ru/space/types/1.0");
+        rootXsdElement.setAttributeNode(schemaAttr3);
+        
+        Attr schemaAttr4 = xsd.createAttribute("xmlns:common-types");
+        schemaAttr4.setValue("http://nicetu.spb.ru/common/types/1.0");
+        rootXsdElement.setAttributeNode(schemaAttr4);
+        
+        Attr schemaAttr5 = xsd.createAttribute("elementFormDefault");
+        schemaAttr5.setValue("qualified");
+        rootXsdElement.setAttributeNode(schemaAttr5);
+        
+        Element xsdImportElement = xsd.createElement("xsd:import");
+        rootXsdElement.appendChild(xsdImportElement);
+        
+        Attr impAttr1 = xsd.createAttribute("namespace");
+        impAttr1.setValue("http://nicetu.spb.ru/common/types/1.0");
+        xsdImportElement.setAttributeNode(impAttr1);
+        
+        Attr impAttr2 = xsd.createAttribute("schemaLocation");
+        impAttr2.setValue("common.xsd");
+        xsdImportElement.setAttributeNode(impAttr2);
+        
+        Element xsdIncludeElement = xsd.createElement("xsd:include");
+        rootXsdElement.appendChild(xsdIncludeElement);
+        
+        Attr inclAttr = xsd.createAttribute("schemaLocation");
+        inclAttr.setValue("primitives.xsd");
+        xsdIncludeElement.setAttributeNode(inclAttr);
+        
+        return rootXsdElement;
     }
 
 }
