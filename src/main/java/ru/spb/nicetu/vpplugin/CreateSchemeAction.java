@@ -10,6 +10,7 @@ import javax.swing.filechooser.FileFilter;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
@@ -130,6 +131,7 @@ public class CreateSchemeAction implements VPActionController{
             DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
             Document xml = docBuilder.newDocument();
             
+            
             Document xsd = docBuilder.newDocument();
             
             viewManager.showMessageDialog(parentFrame, "Создаем первые элементы");
@@ -224,7 +226,7 @@ public class CreateSchemeAction implements VPActionController{
         
         Attr xsdExtAttr = xsd.createAttribute("base");
         //TODO здесь могут быть другие типы
-        xsdExtAttr.setValue("common-types:uniqueObjectType");
+        xsdExtAttr.setValue("common-types:objectType");
         xsdExtElement.setAttributeNode(xsdExtAttr);
         
         for(IAttribute param : classElement.toAttributeArray()) {
@@ -338,6 +340,8 @@ public class CreateSchemeAction implements VPActionController{
             TransformerFactory transformerFactory = TransformerFactory.newInstance();
             Transformer transformer = transformerFactory.newTransformer();
             
+            transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+            
             DOMSource sourceXsd = new DOMSource(xsd);
             StreamResult streamXsdResult = new StreamResult(savedFile);
         
@@ -373,7 +377,7 @@ public class CreateSchemeAction implements VPActionController{
         
         Attr xsdExtAttr = xsd.createAttribute("base");
         //TODO здесь могут быть другие типы
-        xsdExtAttr.setValue("common-types:uniqueObjectType");
+        xsdExtAttr.setValue("common-types:objectType");
         xsdExtElement.setAttributeNode(xsdExtAttr);
         
         for(IDBColumn param : classElement.toDBColumnArray()) {
