@@ -40,8 +40,8 @@ import com.vp.plugin.model.IModelElement;
 import com.vp.plugin.model.factory.IModelElementFactory;
 
 /**
- * @author vag
- *
+ * Схема работы плагина к VP
+ * @author Валерий Голубев
  */
 public class CreateSchemeAction implements VPActionController{
 
@@ -103,10 +103,10 @@ public class CreateSchemeAction implements VPActionController{
     }
     
     /**
-     * 
-     * @param diagram
-     * @param savedFile
-     * @return
+     * Сгенерировать модель по диаграмме классов
+     * @param diagram - диаграмма классов
+     * @param savedFile - место сохранения
+     * @return строка с обратной связью для пользователя с результатом работы
      */
     public String generateXsdAndXmlFormClassDiagram(IClassDiagramUIModel diagram, File savedFile) {
         String result = "";
@@ -210,6 +210,12 @@ public class CreateSchemeAction implements VPActionController{
         return result;
     }
     
+    /**
+     * Создать классы для xsd файла по диаграмме классов
+     * @param xsd - xsd файл
+     * @param rootElement - корневой элемент
+     * @param classElement - класс
+     */
     private void createXsdClassClass(Document xsd, Element rootElement, IClass classElement){
         Element xsdElement = xsd.createElement("xsd:complexType");
         rootElement.appendChild(xsdElement);
@@ -234,6 +240,12 @@ public class CreateSchemeAction implements VPActionController{
         }
     }
     
+    /**
+     * Создать параметры по диаграмме классов 
+     * @param xsd - xsd файл
+     * @param xsdElement - xsd элемент
+     * @param param - параметры
+     */
     private void createClassParam(Document xsd, Element xsdElement, IAttribute param){
         Element xsdAttributeElement = xsd.createElement("xsd:attribute");
         xsdElement.appendChild(xsdAttributeElement);
@@ -253,10 +265,10 @@ public class CreateSchemeAction implements VPActionController{
     }
     
     /**
-     * 
-     * @param diagram
-     * @param savedFile
-     * @return
+     * Сформировать xsd и xml файлы по ER диаграмме
+     * @param diagram - ER диаграмма
+     * @param savedFile - место для сохраняемог файлы
+     * @return результат
      */
     public String generateXsdAndXmlFormEr(IERDiagramUIModel diagram, File savedFile) {
         String result = "";
@@ -361,6 +373,12 @@ public class CreateSchemeAction implements VPActionController{
         return result;
     }
     
+    /**
+     * Создать классы для xsd файла по ER диаграмме
+     * @param xsd - xsd файл
+     * @param rootElement - корневой элемент
+     * @param classElement - класс в ER диаграмме
+     */
     private void createXsdErClass(Document xsd, Element rootElement, IDBTable classElement){
         Element xsdElement = xsd.createElement("xsd:complexType");
         rootElement.appendChild(xsdElement);
@@ -385,6 +403,12 @@ public class CreateSchemeAction implements VPActionController{
         }
     }
     
+    /**
+     * Создать параметры по ER диаграмме 
+     * @param xsd - xsd файл
+     * @param xsdElement - xsd элемент
+     * @param param - параметры
+     */
     private void createErParam(Document xsd, Element xsdElement, IDBColumn param){
         Element xsdAttributeElement = xsd.createElement("xsd:attribute");
         xsdElement.appendChild(xsdAttributeElement);
