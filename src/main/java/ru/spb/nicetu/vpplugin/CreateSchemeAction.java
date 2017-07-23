@@ -230,14 +230,21 @@ public class CreateSchemeAction implements VPActionController{
         Element xsdExtElement = xsd.createElement("xsd:extension");
         xsdComplexContentElement.appendChild(xsdExtElement);
         
-        Attr xsdExtAttr = xsd.createAttribute("base");
-        //TODO здесь могут быть другие типы
-        xsdExtAttr.setValue("common-types:objectType");
-        xsdExtElement.setAttributeNode(xsdExtAttr);
+        String prepareCommomTypesName = "common-types:objectType";
         
         for(IAttribute param : classElement.toAttributeArray()) {
             createClassParam(xsd, xsdExtElement, param);
+            if ("name".equals(param.getName())) {
+                prepareCommomTypesName = "common-types:namedObjectType";
+            } else if ("classifire".equals(param.getName())) {
+                prepareCommomTypesName = "common-types:uniqueObjectType";
+            }
         }
+        
+        Attr xsdExtAttr = xsd.createAttribute("base");
+        //TODO здесь могут быть другие типы
+        xsdExtAttr.setValue(prepareCommomTypesName);
+        xsdExtElement.setAttributeNode(xsdExtAttr);
     }
     
     /**
@@ -393,14 +400,21 @@ public class CreateSchemeAction implements VPActionController{
         Element xsdExtElement = xsd.createElement("xsd:extension");
         xsdComplexContentElement.appendChild(xsdExtElement);
         
-        Attr xsdExtAttr = xsd.createAttribute("base");
-        //TODO здесь могут быть другие типы
-        xsdExtAttr.setValue("common-types:objectType");
-        xsdExtElement.setAttributeNode(xsdExtAttr);
+        String prepareCommomTypesName = "common-types:objectType";
         
         for(IDBColumn param : classElement.toDBColumnArray()) {
             createErParam(xsd, xsdExtElement, param);
+            if ("name".equals(param.getName())) {
+                prepareCommomTypesName = "common-types:namedObjectType";
+            } else if ("classifire".equals(param.getName())) {
+                prepareCommomTypesName = "common-types:uniqueObjectType";
+            }
         }
+        
+        Attr xsdExtAttr = xsd.createAttribute("base");
+        //TODO здесь могут быть другие типы
+        xsdExtAttr.setValue(prepareCommomTypesName);
+        xsdExtElement.setAttributeNode(xsdExtAttr);
     }
     
     /**
