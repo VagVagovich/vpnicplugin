@@ -37,6 +37,7 @@ import com.vp.plugin.model.IDBColumn;
 import com.vp.plugin.model.IDBForeignKey;
 import com.vp.plugin.model.IDBTable;
 import com.vp.plugin.model.IModelElement;
+import com.vp.plugin.model.ITaggedValue;
 import com.vp.plugin.model.factory.IModelElementFactory;
 
 /**
@@ -191,6 +192,8 @@ public class CreateSchemeAction implements VPActionController{
             TransformerFactory transformerFactory = TransformerFactory.newInstance();
             Transformer transformer = transformerFactory.newTransformer();
             
+            transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+            
             DOMSource sourceXsd = new DOMSource(xsd);
             StreamResult streamXsdResult = new StreamResult(savedFile);
         
@@ -217,12 +220,27 @@ public class CreateSchemeAction implements VPActionController{
      * @param classElement - класс
      */
     private void createXsdClassClass(Document xsd, Element rootElement, IClass classElement){
+        
         Element xsdElement = xsd.createElement("xsd:complexType");
         rootElement.appendChild(xsdElement);
         
         Attr xsdAttr = xsd.createAttribute("name");
         xsdAttr.setValue(classElement.getName());
         xsdElement.setAttributeNode(xsdAttr);
+        
+        if (classElement.getTaggedValues() != null) {
+            for (int i = 0;i < classElement.getTaggedValues().taggedValueCount(); i++) {
+                ITaggedValue element = classElement.getTaggedValues().getTaggedValueByIndex(i);
+                if ("annotation".equals(element.getName()) && element.getValueAsString() != null && !element.getValueAsString().isEmpty()){
+                    Element annotationElement = xsd.createElement("xsd:annotation");
+                    xsdElement.appendChild(annotationElement);
+                
+                    Element xsdAnnotationDescElement = xsd.createElement("xsd:documentation");
+                    xsdAnnotationDescElement.appendChild(xsd.createTextNode(element.getValueAsString()));
+                    annotationElement.appendChild(xsdAnnotationDescElement);
+                }
+            }
+        }
         
         Element xsdComplexContentElement = xsd.createElement("xsd:complexContent");
         xsdElement.appendChild(xsdComplexContentElement);
@@ -269,6 +287,20 @@ public class CreateSchemeAction implements VPActionController{
         //TODO а откуда брать обязательность полей?
         xsdUseAttr.setValue("required");
         xsdAttributeElement.setAttributeNode(xsdUseAttr);
+        
+        if (param.getTaggedValues() != null) {
+            for (int i = 0;i < param.getTaggedValues().taggedValueCount(); i++) {
+                ITaggedValue element = param.getTaggedValues().getTaggedValueByIndex(i);
+                if ("annotation".equals(element.getName()) && element.getValueAsString() != null && !element.getValueAsString().isEmpty()){
+                    Element annotationElement = xsd.createElement("xsd:annotation");
+                    xsdElement.appendChild(annotationElement);
+                
+                    Element xsdAnnotationDescElement = xsd.createElement("xsd:documentation");
+                    xsdAnnotationDescElement.appendChild(xsd.createTextNode(element.getValueAsString()));
+                    annotationElement.appendChild(xsdAnnotationDescElement);
+                }
+            }
+        }
     }
     
     /**
@@ -394,6 +426,20 @@ public class CreateSchemeAction implements VPActionController{
         xsdAttr.setValue(classElement.getName());
         xsdElement.setAttributeNode(xsdAttr);
         
+        if (classElement.getTaggedValues() != null) {
+            for (int i = 0;i < classElement.getTaggedValues().taggedValueCount(); i++) {
+                ITaggedValue element = classElement.getTaggedValues().getTaggedValueByIndex(i);
+                if ("annotation".equals(element.getName()) && element.getValueAsString() != null && !element.getValueAsString().isEmpty()){
+                    Element annotationElement = xsd.createElement("xsd:annotation");
+                    xsdElement.appendChild(annotationElement);
+                
+                    Element xsdAnnotationDescElement = xsd.createElement("xsd:documentation");
+                    xsdAnnotationDescElement.appendChild(xsd.createTextNode(element.getValueAsString()));
+                    annotationElement.appendChild(xsdAnnotationDescElement);
+                }
+            }
+        }
+        
         Element xsdComplexContentElement = xsd.createElement("xsd:complexContent");
         xsdElement.appendChild(xsdComplexContentElement);
         
@@ -439,6 +485,20 @@ public class CreateSchemeAction implements VPActionController{
         //TODO а откуда брать обязательность полей?
         xsdUseAttr.setValue("required");
         xsdAttributeElement.setAttributeNode(xsdUseAttr);
+        
+        if (param.getTaggedValues() != null) {
+            for (int i = 0;i < param.getTaggedValues().taggedValueCount(); i++) {
+                ITaggedValue element = param.getTaggedValues().getTaggedValueByIndex(i);
+                if ("annotation".equals(element.getName()) && element.getValueAsString() != null && !element.getValueAsString().isEmpty()){
+                    Element annotationElement = xsd.createElement("xsd:annotation");
+                    xsdElement.appendChild(annotationElement);
+                
+                    Element xsdAnnotationDescElement = xsd.createElement("xsd:documentation");
+                    xsdAnnotationDescElement.appendChild(xsd.createTextNode(element.getValueAsString()));
+                    annotationElement.appendChild(xsdAnnotationDescElement);
+                }
+            }
+        }
     }
     
     /**
