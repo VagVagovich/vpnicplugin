@@ -156,6 +156,21 @@ public class CreateSchemeAction implements VPActionController{
                     attr.setValue(classElement.getName());
                     xmlElement.setAttributeNode(attr);
                     
+                    if (classElement.getTaggedValues() != null) {
+                        for (int i = 0;i < classElement.getTaggedValues().taggedValueCount(); i++) {
+                            ITaggedValue element = classElement.getTaggedValues().getTaggedValueByIndex(i);
+                            if ("annotation".equals(element.getName()) && element.getValueAsString() != null && !element.getValueAsString().isEmpty()){
+                                Attr commentAttr = xml.createAttribute("comment");
+                                commentAttr.setValue(element.getValueAsString());
+                                xmlElement.setAttributeNode(commentAttr);
+                            } else if ("root".equals(element.getName())){
+                                Attr commentAttr = xml.createAttribute("type");
+                                commentAttr.setValue("VALUES");
+                                xmlElement.setAttributeNode(commentAttr);
+                            }
+                        }
+                    }
+                    
                     createXsdClassClass(xsd, rootXsdElement, classElement);
                     
                     for(IAssociation relationship : relationships) {
@@ -354,6 +369,21 @@ public class CreateSchemeAction implements VPActionController{
                     Attr attr = xml.createAttribute("class");
                     attr.setValue(classElement.getName());
                     xmlElement.setAttributeNode(attr);
+                    
+                    if (classElement.getTaggedValues() != null) {
+                        for (int i = 0;i < classElement.getTaggedValues().taggedValueCount(); i++) {
+                            ITaggedValue element = classElement.getTaggedValues().getTaggedValueByIndex(i);
+                            if ("annotation".equals(element.getName()) && element.getValueAsString() != null && !element.getValueAsString().isEmpty()){
+                                Attr commentAttr = xml.createAttribute("comment");
+                                commentAttr.setValue(element.getValueAsString());
+                                xmlElement.setAttributeNode(commentAttr);
+                            } else if ("root".equals(element.getName())){
+                                Attr commentAttr = xml.createAttribute("type");
+                                commentAttr.setValue("VALUES");
+                                xmlElement.setAttributeNode(commentAttr);
+                            }
+                        }
+                    }
                     
                     createXsdErClass(xsd, rootXsdElement, classElement);
                     
